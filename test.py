@@ -34,11 +34,16 @@ def main():
         print(f"  {pair}: {d1} vs {d2}")
     print()
 
+    print(f'【可辨识矩阵】')
     for k, v in disc_matrix.matrix.items():
         print(f'{k}: {v}', end='\n')
-    
-    core = get_core(disc_matrix)
+    print()
+
+    core = get_core2(disc_matrix)
     print(core)
+
+    results = get_core2(disc_matrix, core=core)
+    print(results)
 
 if __name__ == "__main__":
     main()
