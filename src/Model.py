@@ -1,9 +1,10 @@
 class DecisionTable:
-    def __init__(self, objects: list[str], attributes: list[str], decision: str, data: dict[str, dict]):
+    def __init__(self, objects: list[str], attributes: list[str], decision: str, data: dict[str, dict], intensity: dict[list]):
         self.objects = objects # ["x1","x2",...]
         self.attributes = attributes # ["a1","a2",...]
         self.decision = decision # "d"
         self.data = data # data: {object -> {attr1->val1, ..., decision->dec_val}}
+        self.intensity = intensity
 
     # 返回某对象的决策值(字符串或其他类型)
     def get_decision(self, obj: str) -> str:
@@ -55,3 +56,6 @@ class DiscernibilityMatrix:
     # 返回所有在决策上有冲突的对象对
     def all_conflict_pairs(self) -> list[tuple[str, str]]:
         return self.conflict_pairs
+
+    def get_intensity_dict(self):
+        return self.decision_table.intensity
