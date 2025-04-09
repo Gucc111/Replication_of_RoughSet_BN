@@ -38,13 +38,13 @@ def main():
     for k, v in disc_matrix.matrix.items():
         print(f'{k}: {v}', end='\n')
     print()
-    mini_set = get_greedy_cover(disc_matrix)
-    mini_set = refine_cover(mini_set, disc_matrix)
-    print(list(mini_set))
     
     known_attr = {'a2'}
     prior_prob = np.array([0.2271, 0.0527, 0.0629, 0.0612, 0.0506, 0.1317, 0.0798, 0.1421, 0.1202, 0.0717])
-    print(reasoning_bn(disc_matrix, known_attr, prior_prob))
+    results = reasoning_bn(disc_matrix, known_attr, prior_prob)
+    print()
+    print(f'【故障原因的后验概率】')
+    print(results)
 
 if __name__ == "__main__":
     main()

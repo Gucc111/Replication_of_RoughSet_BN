@@ -11,6 +11,8 @@ def get_intensity(disc_matrix: DiscernibilityMatrix, known_attr: set) -> np.ndar
 def reasoning_bn(disc_matrix: DiscernibilityMatrix, known_attr: set, prior_prob: np.ndarray) -> np.ndarray:
     mini_set = get_greedy_cover(disc_matrix)
     mini_set = refine_cover(mini_set, disc_matrix)
+    print('【最小覆盖集】')
+    print(mini_set)
     intensity_plus = get_intensity(disc_matrix, known_attr)
     intensity_minus = 1 - get_intensity(disc_matrix, mini_set - known_attr)
     results = np.cumprod(intensity_plus, axis=1)[:, -1] * np.cumprod(intensity_minus, axis=1)[:, -1] * prior_prob
