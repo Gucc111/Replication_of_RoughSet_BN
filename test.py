@@ -1,50 +1,22 @@
-import numpy as np
+from src.Model import *
 from src.Simplify import *
-from src.Reasoning import *
+from src.utils import *
 
 def main():
-    objects = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    attributes = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9']
-    decision = 'd'
+    dec_table = DecisionTable()
+    dec_table.import_from_json('./Data/intensity.json')
+    table3 = dec_table.export_table3()
+    table4 = dec_table.export_table4()
 
-    data = {
-        'x1': {'a1': 2, 'a2': 2, 'a3': 0, 'a4': 0, 'a5': 1, 'a6': 0, 'a7': 1, 'a8': 0, 'a9': 0, 'd': '故障1'},
-        'x2': {'a1': 0, 'a2': 1, 'a3': 0, 'a4': 1, 'a5': 0, 'a6': 0, 'a7': 0, 'a8': 2, 'a9': 0, 'd': '故障2'},
-        'x3': {'a1': 0, 'a2': 2, 'a3': 0, 'a4': 0, 'a5': 1, 'a6': 0, 'a7': 1, 'a8': 0, 'a9': 0, 'd': '故障3'},
-        'x4': {'a1': 0, 'a2': 0, 'a3': 0, 'a4': 0, 'a5': 2, 'a6': 2, 'a7': 2, 'a8': 2, 'a9': 0, 'd': '故障4'},
-        'x5': {'a1': 0, 'a2': 0, 'a3': 0, 'a4': 2, 'a5': 0, 'a6': 0, 'a7': 0, 'a8': 0, 'a9': 2, 'd': '故障5'},
-        'x6': {'a1': 0, 'a2': 2, 'a3': 2, 'a4': 0, 'a5': 1, 'a6': 0, 'a7': 0, 'a8': 0, 'a9': 0, 'd': '故障6'},
-        'x7': {'a1': 0, 'a2': 0, 'a3': 0, 'a4': 0, 'a5': 2, 'a6': 0, 'a7': 2, 'a8': 0, 'a9': 0, 'd': '故障7'},
-        'x8': {'a1': 0, 'a2': 0, 'a3': 0, 'a4': 1, 'a5': 2, 'a6': 0, 'a7': 2, 'a8': 2, 'a9': 0, 'd': '故障8'},
-        'x9': {'a1': 0, 'a2': 1, 'a3': 0, 'a4': 0, 'a5': 2, 'a6': 2, 'a7': 2, 'a8': 2, 'a9': 0, 'd': '故障9'},
-        'x10': {'a1': 0, 'a2': 1, 'a3': 0, 'a4': 2, 'a5': 2, 'a6': 0, 'a7': 2, 'a8': 0, 'a9': 0, 'd': '故障10'},
-    }
+    df_table3 = show_table(table3)
+    df_table3.to_html('Results/table_4.html')
+    print(df_table3)
+    df_table4 = show_table(table4)
+    df_table4.to_html('Results/table_4.html')
+    print(df_table4)
 
-    intensity = {
-        'a1': [0.90, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        'a2': [0.818, 0.219, 0.713, 0, 0, 0.674, 0, 0, 0.149, 0.20],
-        'a3': [0, 0, 0, 0, 0, 0.87, 0, 0, 0, 0],
-        'a4': [0, 0.267, 0, 0, 0.718, 0, 0, 0.416, 0, 0.6],
-        'a5': [0.189, 0, 0.289, 0.515, 0, 0.231, 0.863, 0.879, 0.681, 0.7],
-        'a6': [0, 0, 0, 0.80, 0, 0, 0, 0, 0.80, 0],
-        'a7': [0.30, 0, 0.35, 0.90, 0, 0, 0.90, 0.90, 0.75, 0.90],
-        'a8': [0, 0.816, 0, 0.681, 0, 0, 0, 0.759, 0.721, 0],
-        'a9': [0, 0, 0, 0, 0.75, 0, 0, 0, 0, 0]
-}
-    dec_table = DecisionTable(objects, attributes, decision, data, intensity)
-    disc_matrix = DiscernibilityMatrix(dec_table)
-
-    print(f'【可辨识矩阵】')
-    for k, v in disc_matrix.matrix.items():
-        print(f'{k}: {v}', end='\n')
-    print()
-    
-    known_attr = {'a2'}
-    prior_prob = np.array([0.2271, 0.0527, 0.0629, 0.0612, 0.0506, 0.1317, 0.0798, 0.1421, 0.1202, 0.0717])
-    results = reasoning_bn(disc_matrix, known_attr, prior_prob)
-    print()
-    print(f'【故障原因的后验概率】')
-    print(results)
+    solutions = find_all_min_covers_with_core(dec_table)
+    print(solutions)
 
 if __name__ == "__main__":
     main()

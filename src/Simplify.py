@@ -1,104 +1,81 @@
 from .Model import *
+from itertools import combinations
 
-# 验证 cover_set 是否能覆盖所有冲突对
-def verify_cover(cover_set: set[str], disc_matrix: DiscernibilityMatrix) -> bool:
-    for (x,y) in disc_matrix.all_conflict_pairs():
-        diff_attrs = disc_matrix.get_discern_set(x,y)
-        if len(cover_set.intersection(diff_attrs)) == 0:
-            return False
+# 判断 subset_attrs 这组属性能否区分表中所有故障(决策)对
+def can_differentiate_all(decision_table: DecisionTable,
+                          subset_attrs: set[str]) -> bool:
+    discrete_table = decision_table.discretize_three_levels()
+    faults = sorted(discrete_table.keys())
+    n = len(faults)
+    for i in range(n):
+        for j in range(i+1, n):
+            f1, f2 = faults[i], faults[j]
+            # 如果在 subset_attrs 上都相同，则无法区分
+            all_same = True
+            for a in subset_attrs:
+                if discrete_table[f1][a] != discrete_table[f2][a]:
+                    all_same = False
+                    break
+            if all_same:
+                return False  # 发现一对无法区分 => 整体失败
     return True
 
-# 绝对能覆盖搜有冲突对的某个条件属性
-def get_core(disc_matrix: DiscernibilityMatrix) -> set[str]:
-    cover_set = disc_matrix.decision_table.attributes
-    core = set()
+def find_core_attributes(decision_table: DecisionTable) -> set[str]:
+    """
+    按“删除属性后是否降低决策能力”来判定核心属性。
+    需要一个 calc_decision_ability 函数或者 equivalent logic。
+    这里用 can_differentiate_all 做简单替代:
+      - 全集能区分 => True
+      - 去掉某属性后若不能区分 => 该属性为core
+    若需要更严格区分“决策能力”大小，可以使用之前的calc_decision_ability对比。
+    """
+    all_attrs = decision_table.all_attributes
+    # 先看全集能否区分
+    if not can_differentiate_all(decision_table, all_attrs):
+        # 若全集都不能区分 => 不存在最小属性集
+        return set()
 
-    for a in cover_set:
-        candidate = set(cover_set) - {a}
-        if verify_cover(candidate, disc_matrix):
-            continue
-        else:
+    core = set()
+    for a in list(all_attrs):
+        # 去掉 a
+        test_subset = all_attrs - {a}
+        if not can_differentiate_all(decision_table, test_subset):
             core.add(a)
-    
     return core
 
-def get_core2(disc_matrix: DiscernibilityMatrix, core=None) -> set[str]:
-    cover_set = disc_matrix.decision_table.attributes
-    if core:
-        cover_set = set(cover_set) - core
-    
-    temp = set()
-    for a in cover_set:
-        candidate = set(cover_set) - {a}
-        if verify_cover(candidate, disc_matrix):
-            continue
-        else:
-            pass
-        temp.add(a)
-    
-    if not core:
-        return temp
-    return temp | core
-
-# 在给定的可辨识矩阵上用贪心算法找最小覆盖
-def get_greedy_cover(disc_matrix: DiscernibilityMatrix, verbose: bool=True) -> set[str]:
+def find_all_min_covers_with_core(decisoin_table: DecisionTable) -> list[set[str]]:
     """
-    1. 将所有冲突对视为未覆盖
-    2. 不断选能覆盖最多未覆盖对的属性
-    3. 更新已覆盖对
-    4. 重复直到无未覆盖对或无法进一步覆盖
+    1. 先求 core；
+    2. 枚举属性子集大小从 |core| 到 全属性数;
+       - 仅枚举包含 core 的子集
+       - 检查能否区分全部故障
+       - 找到第一批可行解就返回(获得所有同样大小解)
     """
-    conflict_pairs = disc_matrix.all_conflict_pairs() # 冲突对
-    matrix = disc_matrix.matrix # 可辨识矩阵
-    core = get_core(disc_matrix)
-    attributes = set(disc_matrix.decision_table.attributes) - core
+    # 全属性
+    all_attrs = decisoin_table.all_attributes
 
-    uncovered = set(conflict_pairs)
-    cover_set = set()
-    step = 0
+    core_set = find_core_attributes(decisoin_table)
+    print(f"核心属性 core = {core_set}")
 
-    while uncovered:
-        step += 1
-        best_attr = None
-        best_cover_count = 0
+    # 如果 core 自己都无法区分 => 还需要更多属性
+    # 逐渐增加
+    non_core = all_attrs - core_set
+    total = len(non_core)
 
-        for a in attributes:
-            coverset = {(x,y) for (x,y) in uncovered if a in matrix[(x,y)]}
-            count = len(coverset)
-            if count > best_cover_count:
-                best_cover_count = count
-                best_attr = a
+    solutions = []
+    # 枚举子集大小 s 从 c_size 到 total
+    for s in range(1, total+1):
+        # 枚举
+        found_any = False
+        for combo in combinations(non_core, s):
+            subset = set(combo) | core_set
+            # 测试是否能区分全部故障
+            if can_differentiate_all(decisoin_table, subset):
+                solutions.append(subset)
+                found_any = True
 
-        if best_attr is None:
-            if verbose:
-                print(f"[GreedyCover] Step {step}: 无法继续覆盖, 剩余对{len(uncovered)}.")
+        if found_any:
+            # 已找到大小为 s 的可行解, 即最小 => 不再往下找
             break
 
-        cover_set.add(best_attr)
-        newly_covered = {(x,y) for (x,y) in uncovered if best_attr in matrix[(x,y)]}
-        uncovered -= newly_covered
-
-        if verbose:
-            print(f"[GreedyCover] Step {step}: 选属性 {best_attr}, 覆盖 {best_cover_count} 对, 剩余 {len(uncovered)} 对。")
-
-    return cover_set | core
-
-# 冗余删除: 尝试去掉多余的属性, 使得依然覆盖全部冲突对
-def refine_cover(cover_set: set[str], disc_matrix: DiscernibilityMatrix, verbose:bool=True) -> set[str]:
-    refined = set(cover_set)
-    changed = True
-    round_idx = 0
-
-    while changed:
-        changed = False
-        round_idx += 1
-        for a in list(refined):
-            candidate = refined - {a}
-            if verify_cover(candidate, disc_matrix):
-                refined = candidate
-                changed = True
-                if verbose:
-                    print(f"[Refine] Round {round_idx}: 删除冗余属性 {a}")
-                break
-    
-    return refined
+    return solutions
