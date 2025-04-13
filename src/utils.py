@@ -20,7 +20,7 @@ def parse_m_key(m_str: str) -> int:
         return 0
 
 # 针对表3或表4的字典数据, 生成一个DataFrame
-def show_table(table: dict[str, dict[str, float]]):
+def show_table(table: dict[str, dict[str, float]]) -> pd.DataFrame:
     # 收集所有行(故障ID)与列(属性名)
     fault_ids = list(table.keys())
     all_attrs = set()
