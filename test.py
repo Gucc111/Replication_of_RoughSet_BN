@@ -12,7 +12,7 @@ def main():
     print('最小覆盖集分别是：')
     for i, s in enumerate(solutions):
         print(sorted(s))
-        show_table(dec_table.extract_attribute_subset(s).export_table4()).to_html(f'Results/table5_{i+1}.html')
+        show_table(dec_table.extract_attribute_subset(s).export_table4()).to_html(f'Results/table_5_{i+1}.html')
     print()
 
     dec_table = dec_table.extract_attribute_subset(solutions[0])
