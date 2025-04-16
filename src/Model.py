@@ -30,6 +30,7 @@ class DecisionTable:
             prob_dict = {}
 
         self.prob_table = {}
+        self.fault_prior = {}
         self.all_attributes = set()
 
         # 依次加载初始数据
@@ -67,19 +68,55 @@ class DecisionTable:
         for a, val in attr_prob_map.items():
             self.prob_table[fault_id][a] = float(val)
 
+    # 为指定故障 fault_id 添加/更新先验概率 prior
+    def add_fault_prior(self, fault_id: str, prior: float) -> None:
+        if fault_id not in self.prob_table:
+            # 初始化故障
+            self.prob_table[fault_id] = {}
+            for attr in self.all_attributes:
+                self.prob_table[fault_id][attr] = 0.0
+
+        # 设置先验
+        self.fault_prior[fault_id] = float(prior)
+
+    # 获取指定故障的先验概率
+    def get_fault_prior(self, fault_id: str) -> float:
+        return self.fault_prior.get(fault_id, 0.0)
+
+    # 从 JSON 文件加载并合并到本 DecisionTable
     def import_from_json(self, filepath: str) -> None:
         """
-        从 JSON 文件加载数据并合并到当前的 DecisionTable 中。
-        JSON 格式示例：
         {
-          "d1": {"m1":0.9, "m2":0.81},
-          "d2": {"m2":0.219, "m4":0.267, "m8":0.816}
+          "priors": {
+            "d1": 0.2271,
+            "d2": 0.0527
+          },
+          "data": {
+            "d1": {"m1":0.9, "m2":0.81},
+            "d2": {"m2":0.219, "m4":0.267, "m8":0.816}
+          }
         }
         """
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        for fault_id, attr_map in data.items():
-            self.add_fault_data(fault_id, attr_map)
+
+        # 先导入 priors(若有)
+        if "priors" in data:
+            for fault_id, prior_val in data["priors"].items():
+                self.add_fault_prior(fault_id, float(prior_val))
+
+        # 再导入 data(若有)
+        if "data" in data:
+            for fault_id, attr_map in data["data"].items():
+                self.add_fault_data(fault_id, attr_map)
+        else:
+            # {d1:{...}, d2:{...}}
+            if not isinstance(data, dict):
+                raise ValueError("JSON格式错误: 需要obj->(data|priors)结构")
+            
+            for fault_id, attr_map in data.items():
+                if fault_id not in ["priors", "data"]:
+                    self.add_fault_data(fault_id, attr_map)
 
     # 获取某个故障在某属性下的概率值
     def get_probability(self, fault_id: str, attr: str) -> float:
@@ -125,7 +162,10 @@ class DecisionTable:
 
     # 根据给定的属性子集，构造并返回一个新的 DecisionTable
     def extract_attribute_subset(self, subset_attrs: Set[str]) -> "DecisionTable":
-        new_prob_dict = {}
+        """
+        从当前表中选出 subset_attrs 这几个属性构造新表，其它属性丢弃。
+        """
+        new_prob_dict: Dict[str, Dict[str, float]] = {}
         for fault_id, old_attr_map in self.prob_table.items():
             new_attr_map = {}
             for a in subset_attrs:
@@ -133,7 +173,15 @@ class DecisionTable:
                 new_attr_map[a] = val
             new_prob_dict[fault_id] = new_attr_map
 
-        return DecisionTable(new_prob_dict)
+        # 构造新表
+        new_dt = DecisionTable(new_prob_dict)
+        # 同时也复制先验概率
+        for f_id, p_val in self.fault_prior.items():
+            if f_id not in new_dt.prob_table:
+                # 说明在新表里故障还没出现 => 初始化
+                new_dt.prob_table[f_id] = {}
+            new_dt.fault_prior[f_id] = p_val
+        return new_dt
 
     def list_all_faults(self) -> List[str]:
         """返回当前所有故障ID的列表，如 ["d1","d2","d3",...]。"""

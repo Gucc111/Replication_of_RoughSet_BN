@@ -1,31 +1,32 @@
-from src.Model import *
-from src.Simplify import *
-from src.utils import *
+from src.Model import DecisionTable
+from src.Simplify import find_min_covers_exhaustive
+from src.Reasoning import reasoning
+from src.utils import show_table
+import sys
 
 def main():
     dec_table = DecisionTable()
-    dec_table.import_from_json('./Data/intensity.json')
-    table3 = dec_table.export_table3()
-    table4 = dec_table.export_table4()
-
-    df_table3 = show_table(table3)
-    df_table3.to_html('Results/table_4.html')
-    print(df_table3)
-    df_table4 = show_table(table4)
-    df_table4.to_html('Results/table_4.html')
-    print(df_table4)
-
+    dec_table.import_from_json('./Data/data.json')
+    
     solutions = find_min_covers_exhaustive(dec_table)
-    print(solutions)
+    print('最小覆盖集分别是：')
+    for i, s in enumerate(solutions):
+        print(sorted(s))
+        show_table(dec_table.extract_attribute_subset(s).export_table4()).to_html(f'Results/table5_{i+1}.html')
+    print()
 
-    table_list = []
-    for solution in solutions:
-        table_list.append(dec_table.extract_attribute_subset(solution))
+    dec_table = dec_table.extract_attribute_subset(solutions[0])
+    print('【表5】 最小故障诊断决策表')
+    print(show_table(dec_table.export_table4()))
+    print()
 
-    for i in range(len(table_list)):
-        table5 = table_list[i].export_table4
-        df_table5 = show_table(table5)
-        df_table5.to_html(f'Results/table_5_{i+1}.html')
+    ab_attr = sys.stdin.readline().strip().split()
+    print()
+
+    decision, results = reasoning(dec_table, ab_attr)
+    print(f'{decision} 故障概率最大')
+    print('【表7】各故障原因概率')
+    print(results)
 
 if __name__ == "__main__":
     main()
